@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "COMSOL Multiphysics automation tools for DeepSeek Harness (COMSOL 自动仿真助手)",
+  "license": "MIT",
   "exports": {
     ".": "./index.js",
     "./locale/*.json": "./locale/*.json",
@@ -18,6 +19,7 @@
     "cordis.patch.yml",
     "README.md",
     "TEST_REPORT.md",
+    "LICENSE",
     "docs",
     "examples",
     "test",

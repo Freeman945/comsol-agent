@@ -622,6 +622,15 @@ comsol-agent/
     integration.log         真实集成测试原始日志
   README.md
   TEST_REPORT.md
+  LICENSE                   MIT 许可证
 ```
 
 示例产物来自本机真实运行，性质与假设见 [examples/README.md](examples/README.md)。
+
+## 15. 许可证
+
+本项目采用 **MIT License**，完整文本见 [LICENSE](LICENSE)。
+
+你可以自由使用、修改、分发和商用，但需保留版权声明与许可声明；软件按“现状”提供，不附带任何明示或暗示担保。
+
+COMSOL Multiphysics 是 COMSOL AB 的商标。本项目是第三方自动化插件，与 COMSOL AB 无隶属关系，也未获得其背书；使用本插件仍需遵守你本机的 COMSOL 许可协议。
