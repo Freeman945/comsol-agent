@@ -89,5 +89,5 @@ test('analyzeLog reports mesh and license evidence without overclaiming', () => 
 test('analyzeLog says nothing was proven when no signature is present', () => {
   const analysis = analyzeLog('MODEL_LOADED=x\nBRIDGE_RESULT=result.json\n', { id: 'j3', status: 'succeeded' })
   assert.equal(analysis.categories.length, 0)
-  assert.match(analysis.conclusion, /does not by itself prove/i)
+  assert.match(analysis.conclusion, /not a physics validation/i)
 })
