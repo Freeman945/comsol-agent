@@ -5,13 +5,7 @@ export const name = PLUGIN_NAME
 export const version = PLUGIN_VERSION
 export const inject = ['tools']
 
-/**
- * COMSOL Simulation Assistant.
- *
- * Registers a set of agent tools that drive a local COMSOL Multiphysics
- * installation through its official Java API. The plugin itself never builds
- * shell command strings and never writes outside the configured workspace.
- */
+// Registers the COMSOL tools with the Host tool registry.
 export function apply(ctx, config) {
   const plugin = createPlugin(ctx, config)
 

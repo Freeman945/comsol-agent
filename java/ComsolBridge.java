@@ -7,14 +7,8 @@ import com.fasterxml.jackson.databind.node.*;
 import java.io.*;
 import java.util.*;
 
-/**
- * COMSOL Java API bridge for the DeepSeek Harness comsol-agent plugin.
- *
- * Usage: java ComsolBridge <job.json> <result.json>
- *
- * The driver runs as a standalone COMSOL Java API process (not COMSOL batch),
- * which permits full local file access for exports and model saving.
- */
+// ComsolBridge <job.json> <result.json>
+// Runs as a standalone COMSOL Java API process so exports and saves have normal file access.
 public class ComsolBridge {
   static final ObjectMapper OM = new ObjectMapper();
   static final ObjectNode RESULT = OM.createObjectNode();
@@ -94,7 +88,7 @@ public class ComsolBridge {
   // ------------------------------------------------------------------ actions
 
   static void doProbe(JsonNode job) throws Exception {
-    // Creating a model forces a real license checkout (initStandalone alone can be lazy).
+    // Force a license checkout; initStandalone can be lazy.
     String tag = ModelUtil.uniquetag("LicenseProbe");
     Model probe = ModelUtil.create(tag);
     probe.modelNode().create("comp1");
@@ -198,7 +192,7 @@ public class ComsolBridge {
         double b = m.param().evaluate(name);
         numeric = closeEnough(a, b);
       } catch (Throwable t) {
-        // numeric comparison is optional
+        // Numeric comparison is optional.
       }
       row.put("matchesExactly", exact);
       row.put("matchesNumerically", numeric);
@@ -454,7 +448,7 @@ public class ComsolBridge {
     setParamDefault(m, p, "r_tip_out", "6");
     setParamDefault(m, p, "freq", "2.45[GHz]");
     setParamDefault(m, p, "P_in", "1[W]");
-    // validate all parameters evaluate
+    // Validate parameter expressions.
     String[] names = {"r_in", "r_out", "z_feed", "z_tip", "r_tip_in", "r_tip_out", "freq", "P_in"};
     for (int i = 0; i < names.length; i++) {
       m.param().evaluate(m.param().get(names[i]));
@@ -621,7 +615,7 @@ public class ComsolBridge {
       }
       throw new BridgeException("UNSUPPORTED_GEOMETRY", "Surface evaluation requires a 2D or 3D component");
     }
-    // domain (volume/area) evaluation
+    // Domain evaluation.
     if (dim == 3) {
       if ("volume_integral".equals(kind)) return "IntVolume";
       if ("average".equals(kind) || "volume_average".equals(kind)) return "AvVolume";
@@ -723,7 +717,7 @@ public class ComsolBridge {
       }
       data.add(r);
     }
-    // append magnitude/dB columns
+    // Magnitude and dB columns.
     for (int e = 0; e < exprs.size(); e++) {
       header.add(cols.get(e) + "_mag");
       header.add(cols.get(e) + "_dB");
