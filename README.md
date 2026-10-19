@@ -1,5 +1,7 @@
 # comsol-agent
 
+[English](README.en.md) | 简体中文
+
 COMSOL Multiphysics 自动化插件，运行在 DeepSeek Harness 的主机进程中。通过 COMSOL 官方 Java API 完成模型校验、参数修改、求解、参数扫描、结果导出和日志诊断。
 
 详细操作见 [使用手册](docs/使用手册.md)，真实测试记录见 [TEST_REPORT.md](TEST_REPORT.md)。
@@ -214,6 +216,7 @@ comsol-agent/
   examples/
   test-logs/
   README.md
+  README.en.md
   TEST_REPORT.md
   LICENSE
 ```
