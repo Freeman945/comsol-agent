@@ -2,19 +2,19 @@
 workspace=D:/comsol-agent/selftest-workspace
 comsolHome=D:/COMSOL62/Multiphysics
 tools=comsol_check_environment, comsol_validate_model, comsol_create_model, comsol_set_parameters, comsol_run_model, comsol_parameter_sweep, comsol_get_job_status, comsol_read_log, comsol_export_results, comsol_evaluate_results, comsol_cancel_job
-[PASS] comsol_check_environment (6391 ms)
-[PASS] comsol_check_environment(deep) (22786 ms)
-[PASS] comsol_create_model(rf_coax_air, solve) (21013 ms)
-[PASS] comsol_validate_model (15889 ms)
-[PASS] comsol_evaluate_results(global+integral+line) (16144 ms)
-[PASS] comsol_evaluate_results(volume integral) (16056 ms)
-[PASS] comsol_evaluate_results(line) (16076 ms)
-[PASS] comsol_set_parameters (17475 ms)
-[PASS] comsol_run_model(java, wait) (19039 ms)
-[PASS] comsol_export_results (17689 ms)
-[PASS] comsol_parameter_sweep(2 combos, wait) (37659 ms)
-[PASS] comsol_get_job_status (4 ms)
-[PASS] comsol_read_log (2 ms)
+[PASS] comsol_check_environment (6496 ms)
+[PASS] comsol_check_environment(deep) (22699 ms)
+[PASS] comsol_create_model(rf_coax_air, solve) (20768 ms)
+[PASS] comsol_validate_model (15908 ms)
+[PASS] comsol_evaluate_results(global S11) (15751 ms)
+[PASS] comsol_evaluate_results(volume integral) (15808 ms)
+[PASS] comsol_evaluate_results(line) (15773 ms)
+[PASS] comsol_set_parameters (17598 ms)
+[PASS] comsol_run_model(java, wait) (19252 ms)
+[PASS] comsol_export_results (17744 ms)
+[PASS] comsol_parameter_sweep(2 combos, wait) (37770 ms)
+[PASS] comsol_get_job_status (2 ms)
+[PASS] comsol_read_log (4 ms)
 
 ==== SUMMARY ====
 {
@@ -25,79 +25,79 @@ tools=comsol_check_environment, comsol_validate_model, comsol_create_model, coms
       "name": "comsol_check_environment",
       "status": "PASS",
       "detail": "",
-      "durationMs": 6391
+      "durationMs": 6496
     },
     {
       "name": "comsol_check_environment(deep)",
       "status": "PASS",
       "detail": "",
-      "durationMs": 22786
+      "durationMs": 22699
     },
     {
       "name": "comsol_create_model(rf_coax_air, solve)",
       "status": "PASS",
       "detail": "",
-      "durationMs": 21013
+      "durationMs": 20768
     },
     {
       "name": "comsol_validate_model",
       "status": "PASS",
       "detail": "",
-      "durationMs": 15889
+      "durationMs": 15908
     },
     {
-      "name": "comsol_evaluate_results(global+integral+line)",
+      "name": "comsol_evaluate_results(global S11)",
       "status": "PASS",
       "detail": "",
-      "durationMs": 16144
+      "durationMs": 15751
     },
     {
       "name": "comsol_evaluate_results(volume integral)",
       "status": "PASS",
       "detail": "",
-      "durationMs": 16056
+      "durationMs": 15808
     },
     {
       "name": "comsol_evaluate_results(line)",
       "status": "PASS",
       "detail": "",
-      "durationMs": 16076
+      "durationMs": 15773
     },
     {
       "name": "comsol_set_parameters",
       "status": "PASS",
       "detail": "",
-      "durationMs": 17475
+      "durationMs": 17598
     },
     {
       "name": "comsol_run_model(java, wait)",
       "status": "PASS",
       "detail": "",
-      "durationMs": 19039
+      "durationMs": 19252
     },
     {
       "name": "comsol_export_results",
       "status": "PASS",
       "detail": "",
-      "durationMs": 17689
+      "durationMs": 17744
     },
     {
       "name": "comsol_parameter_sweep(2 combos, wait)",
       "status": "PASS",
       "detail": "",
-      "durationMs": 37659
+      "durationMs": 37770
     },
     {
       "name": "comsol_get_job_status",
       "status": "PASS",
       "detail": "",
-      "durationMs": 4
+      "durationMs": 2
     },
     {
       "name": "comsol_read_log",
       "status": "PASS",
       "detail": "",
-      "durationMs": 2
+      "durationMs": 4
     }
   ]
 }

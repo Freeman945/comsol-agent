@@ -16,7 +16,7 @@ COMSOL：`D:\COMSOL62\Multiphysics`，`COMSOL Multiphysics 6.2.0.290`
 | 测试层级 | 结果 |
 |---|---|
 | 单元测试（无需许可） | **9/9 通过** |
-| 真实 COMSOL 集成测试（需要许可） | **1/1 通过**，约 161 s |
+| 真实 COMSOL 集成测试（需要许可） | **1/1 通过**，约 154 s |
 | 插件全链路自测（13 步） | **13/13 通过** |
 | Harness 工具级调用 | 11 个工具均已通过当前会话真实调用 |
 | 真实 COMSOL 求解 | 已生成解、S 参数、CSV、PNG；证据见下文 |
@@ -80,7 +80,7 @@ node --test test/unit.test.mjs
 
 ---
 
-## 3. 真实集成测试（1/1，约 161 s）
+## 3. 真实集成测试（1/1，约 154 s）
 
 命令：
 
@@ -106,10 +106,10 @@ node --test test/integration.test.mjs
 集成测试输出：
 
 ```
-integration evidence: model=C:\Users\<user>\AppData\Local\Temp\comsol-agent-integration-rHY1dG\models\integration_coax.mph
+integration evidence: model=C:\Users\<user>\AppData\Local\Temp\comsol-agent-integration-ub3fq5\models\integration_coax.mph
 integration evidence: S11(2.45GHz)=-3.556821666236149e-7
 integration evidence: sweep=2/2
-✔ real COMSOL: create, validate, evaluate, modify, run, export and sweep (161403.5182ms)
+✔ real COMSOL: create, validate, evaluate, modify, run, export and sweep (153564.1978ms)
 ℹ tests 1
 ℹ pass 1
 ℹ fail 0
@@ -133,19 +133,19 @@ node scripts/selftest.mjs
 
 | # | 步骤 | 耗时 | 结果 |
 |---|---|---:|---|
-| 1 | `comsol_check_environment` | 6,391 ms | PASS |
-| 2 | `comsol_check_environment(deep=true)` | 22,786 ms | PASS |
-| 3 | `comsol_create_model(rf_coax_air, solve=true)` | 21,013 ms | PASS |
-| 4 | `comsol_validate_model` | 15,889 ms | PASS |
-| 5 | `comsol_evaluate_results`（global S11） | 16,144 ms | PASS |
-| 6 | `comsol_evaluate_results`（体积分） | 16,056 ms | PASS |
-| 7 | `comsol_evaluate_results`（截线） | 16,076 ms | PASS |
-| 8 | `comsol_set_parameters` | 17,475 ms | PASS |
-| 9 | `comsol_run_model(java, wait=true)` | 19,039 ms | PASS |
-| 10 | `comsol_export_results` | 17,689 ms | PASS |
-| 11 | `comsol_parameter_sweep(2 组, wait=true)` | 37,659 ms | PASS |
-| 12 | `comsol_get_job_status` | 4 ms | PASS |
-| 13 | `comsol_read_log` | 2 ms | PASS |
+| 1 | `comsol_check_environment` | 6,496 ms | PASS |
+| 2 | `comsol_check_environment(deep=true)` | 22,699 ms | PASS |
+| 3 | `comsol_create_model(rf_coax_air, solve=true)` | 20,768 ms | PASS |
+| 4 | `comsol_validate_model` | 15,908 ms | PASS |
+| 5 | `comsol_evaluate_results`（global S11） | 15,751 ms | PASS |
+| 6 | `comsol_evaluate_results`（体积分） | 15,808 ms | PASS |
+| 7 | `comsol_evaluate_results`（截线） | 15,773 ms | PASS |
+| 8 | `comsol_set_parameters` | 17,598 ms | PASS |
+| 9 | `comsol_run_model(java, wait=true)` | 19,252 ms | PASS |
+| 10 | `comsol_export_results` | 17,744 ms | PASS |
+| 11 | `comsol_parameter_sweep(2 组, wait=true)` | 37,770 ms | PASS |
+| 12 | `comsol_get_job_status` | 2 ms | PASS |
+| 13 | `comsol_read_log` | 4 ms | PASS |
 
 ```
 "passed": 13,
@@ -339,6 +339,47 @@ job：`job-20261019-120456-007-0ork1b`
 
 说明：续跑任务的 `outputDir` 是新目录，但结果中保留原组合的真实输出路径；如需全部重算，不要传 `resumeJobId`。
 
+### 5.12 覆盖保护与路径安全
+
+| 场景 | 实际结果 |
+|---|---|
+| `run_model` 指定已存在的输出 `.mph`，未传 `overwrite` | 立即返回 `OUTPUT_EXISTS`；不启动 COMSOL |
+| `export_results` 指定已存在 `s_parameters.csv` 的目录，未传 `overwrite` | 立即返回 `OUTPUT_EXISTS`，并列出 `collisions` |
+| `export_results` 的 `filename="../evil.png"` | 立即返回 `INVALID_FILENAME`，拒绝路径穿越 |
+| `parameter_sweep` 复用已有输出目录，未传 `overwrite` | `status=failed`、`OUTPUT_EXISTS`，耗时 6 ms，不覆盖已有 `.mph` |
+| 同一扫描加 `overwrite=true` | `2/2` 成功（job `job-20261019-121938-001-vneaj3`） |
+| `run_model` 对已存在输出加 `overwrite=true` | `succeeded`，job `job-20261019-122757-003-vxmo5y`，输出 1,096,562 bytes |
+| `export_results` 对已存在 CSV 加 `overwrite=true` | `succeeded`，job `job-20261019-122818-004-9pyx7s` |
+
+### 5.13 扫描汇总 CSV 与分阶段证据
+
+**`comsol_run_model` 分阶段证据**（job `job-20261019-121808-001-9g1xl0`）：
+
+```json
+"executionEvidence": {
+  "processStarted": true,
+  "modelLoaded": true,
+  "solveRequested": true,
+  "studiesRun": ["std1"],
+  "solutionsFound": 1,
+  "solveCompleted": true,
+  "outputWritten": true,
+  "bridgeExitCode": 0
+}
+```
+
+**扫描汇总 CSV**（成功 job `job-20261019-121938-001-vneaj3`）：
+
+- `summaryCsv`：`...\sweeps\summary_test\sweep_summary.csv`
+- 列：`index, freq, status, outputPath, outputExists, outputSizeBytes, durationMs, errorCode, errorMessage, logPath`
+- 2 行均为 `succeeded`。
+
+**失败任务不会覆盖成功汇总**（job `job-20261019-122022-002-ulhn0e`）：
+
+- 同一输出目录、未传 `overwrite` → `OUTPUT_EXISTS`，耗时 7 ms。
+- 稳定 `sweep_summary.csv` 仍保留上一次 2 行成功记录。
+- 本次失败写入独立副本 `sweep_summary_job-20261019-122022-002-ulhn0e.csv`，其中 1 行为 `failed/OUTPUT_EXISTS`。
+
 ---
 
 ## 6. 预期失败路径测试
@@ -410,6 +451,14 @@ job：`job-20261019-120456-007-0ork1b`
 12. **Java 驱动编译缓存不检测源文件更新**  
     `driver.compiled` 为 true 时直接复用旧 class，修改 `ComsolBridge.java` 后不会重新编译。  
     → 每次调用比较源文件与 class 的 mtime；源码更新即重新编译。
+
+13. **输出文件可被静默覆盖**  
+    `run_model`/`set_parameters`/`export_results`/`parameter_sweep` 指定已存在目标时没有默认拒绝。  
+    → 增加 `overwrite=false` 默认保护、`OUTPUT_EXISTS` 错误、导出文件名路径穿越拒绝（`../`、`/`、`\`）。
+
+14. **参数扫描缺少可导出的汇总文件**  
+    扫描只有 JSON 结果，没有 CSV。  
+    → 增加 `sweep_summary.csv`（job 目录 + 输出目录 jobId 副本 + 不轻易覆盖的稳定副本）。
 
 ---
 

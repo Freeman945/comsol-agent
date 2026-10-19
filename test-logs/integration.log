@@ -1,8 +1,8 @@
-[@local/comsol-agent] loaded @local/comsol-agent@1.0.0; workspace=C:\Users\<user>\AppData\Local\Temp\comsol-agent-integration-rHY1dG; comsolHome=D:\COMSOL62\Multiphysics
-integration evidence: model=C:\Users\<user>\AppData\Local\Temp\comsol-agent-integration-rHY1dG\models\integration_coax.mph
+[@local/comsol-agent] loaded @local/comsol-agent@1.0.0; workspace=C:\Users\<user>\AppData\Local\Temp\comsol-agent-integration-ub3fq5; comsolHome=D:\COMSOL62\Multiphysics
+integration evidence: model=C:\Users\<user>\AppData\Local\Temp\comsol-agent-integration-ub3fq5\models\integration_coax.mph
 integration evidence: S11(2.45GHz)=-3.556821666236149e-7
 integration evidence: sweep=2/2
-✔ real COMSOL: create, validate, evaluate, modify, run, export and sweep (161403.5182ms)
+✔ real COMSOL: create, validate, evaluate, modify, run, export and sweep (153564.1978ms)
 ℹ tests 1
 ℹ suites 0
 ℹ pass 1
@@ -10,4 +10,4 @@ integration evidence: sweep=2/2
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 161525.3596
+ℹ duration_ms 153690.8526

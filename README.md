@@ -21,7 +21,7 @@
 | 参数扫描 | 4 组（2 频率 × 2 出口半径）全部成功 |
 | 结果导出 | CSV、截线数据、PNG 场图均已生成并通过文件存在性检查 |
 | 单元测试 | 9/9 通过 |
-| 真实集成测试 | 1/1 通过（约 161 s） |
+| 真实集成测试 | 1/1 通过（约 154 s） |
 | 插件全链路自测 | 13/13 通过 |
 
 **重要区分**：几何建模成功不代表物理模型正确；求解成功也不代表物理结论正确。当前模板只建立了一个明确标注的**空气/真空电磁基准模型**，不包含等离子体、气流或传热。
@@ -175,6 +175,8 @@ Java 驱动源码修改不需要重载插件：下次工具调用时根据源文
 - 不执行由模型内容或自然语言拼接的任意命令。
 - `comsol_set_parameters` 默认绝不覆盖输入 `.mph`，会拒绝 `outputPath == modelPath`。
 - `comsol_run_model` 默认生成新的输出文件；拒绝覆盖输入。
+- `set_parameters` / `run_model` / `export_results` / `parameter_sweep` 的目标文件已存在时默认报 `OUTPUT_EXISTS`，需显式 `overwrite=true`。
+- 导出文件名只允许纯文件名，拒绝 `../`、`/`、`\` 等路径穿越。
 - 新建模型默认不覆盖已有文件，除非显式 `overwrite=true`。
 - 不删除用户已有文件；插件不做自动清理。
 - 不修改系统环境变量、注册表、防火墙或 COMSOL 许可配置。
@@ -184,7 +186,7 @@ Java 驱动源码修改不需要重载插件：下次工具调用时根据源文
 
 未实现/需要人工确认：
 
-- 删除、覆盖已有用户文件（除显式 `overwrite=true` 的新建模型外）仍需用户自行确认。
+- 删除文件仍需用户自行确认；覆盖已存在目标必须显式设置 `overwrite=true`。
 - 大型扫描开始前建议用户确认估算；插件提供阈值和估算，但不会替用户判断机器负载。
 - 不提供远程访问桥接，因此不存在公网监听端口。
 
@@ -289,6 +291,7 @@ Java 驱动源码修改不需要重载插件：下次工具调用时根据源文
 | `modelPath` | string | 必填 | 源模型，绝不修改 |
 | `params` | object | 必填 | 参数名 → 表达式（字符串或数字） |
 | `outputPath` | string | `runs/<name>__params_<ts>.mph` | 新模型路径 |
+| `overwrite` | boolean | `false` | 是否允许替换已存在的输出文件 |
 | `allowNewParams` | boolean | `false` | 是否允许创建不存在的参数 |
 | `timeoutSec` | number | `300` | 超时 |
 
@@ -300,6 +303,7 @@ Java 驱动源码修改不需要重载插件：下次工具调用时根据源文
 |---|---|---|---|
 | `modelPath` | string | 必填 | 源 `.mph` |
 | `outputPath` | string | `runs/<name>__run_<ts>.mph` | 输出 `.mph` |
+| `overwrite` | boolean | `false` | 是否允许替换已存在的输出文件 |
 | `study` | string | 全部研究 | 研究标签，如 `std1` |
 | `params` | object | — | 运行前修改的全局参数 |
 | `solve` | boolean | `true` | 为 `false` 时只加载/改参数/保存 |
@@ -307,7 +311,7 @@ Java 驱动源码修改不需要重载插件：下次工具调用时根据源文
 | `timeoutSec` | number | `900` | 超时 |
 | `wait` | boolean | `false` | 为 `true` 时等待并返回最终状态 |
 
-默认异步：立即返回 `jobId`，用 `comsol_get_job_status` 查询。`wait=true` 时返回最终状态；只有真正求解并生成非空 `.mph` 才返回 `ok=true`。
+默认异步：立即返回 `jobId`，用 `comsol_get_job_status` 查询。`wait=true` 时返回最终状态；只有真正求解并生成非空 `.mph` 才返回 `ok=true`。结果中的 `executionEvidence` 分阶段记录：进程是否启动、模型是否加载、是否请求求解、研究/解数量、求解是否完成、输出是否写出。
 
 `engine="batch"` 使用：
 
@@ -325,6 +329,7 @@ comsolbatch -inputfile ... -outputfile ... -batchlog ... -study std1 -stoptime .
 | `parameters` | object | 必填 | 参数 → 值数组；做笛卡尔积 |
 | `study` | string | 全部研究 | 研究标签 |
 | `outputDir` | string | `sweeps/<name>__<ts>` | 输出目录 |
+| `overwrite` | boolean | `false` | 是否允许替换已存在的每组输出 |
 | `confirm` | boolean | `false` | 超过阈值时必须为 `true` |
 | `stopOnError` | boolean | `true` | 首个失败即停止 |
 | `timeoutSec` | number | `900` | 每组超时 |
@@ -332,7 +337,7 @@ comsolbatch -inputfile ... -outputfile ... -batchlog ... -study std1 -stoptime .
 | `resumeJobId` | string | — | 跳过该任务已成功的组合 |
 | `wait` | boolean | `false` | 等待最终汇总 |
 
-每组参数独立：加载 → 改参数 → 求解 → 保存 `<name>__<参数组合>.mph`。记录每组 `status`、`durationMs`、`outputPath`、`logPath`、`error`。状态持久化在 job 目录的 `sweep.json`，可断点续跑。
+每组参数独立：加载 → 改参数 → 求解 → 保存 `<name>__<参数组合>.mph`。记录每组 `status`、`durationMs`、`outputPath`、`logPath`、`error`。状态持久化在 job 目录的 `sweep.json`，可断点续跑。任务还会生成 `sweep_summary.csv`：job 目录始终有一份；输出目录有一份按 jobId 命名的副本，以及一份稳定的 `sweep_summary.csv`（仅在 `overwrite=true` 或文件不存在时更新，避免失败任务覆盖上一次成功汇总）。
 
 超过阈值时（未确认）返回：
 
@@ -374,6 +379,7 @@ comsolbatch -inputfile ... -outputfile ... -batchlog ... -study std1 -stoptime .
 |---|---|---|---|
 | `modelPath` | string | 必填 | 已求解模型 |
 | `outputDir` | string | `exports/<name>__<ts>` | 输出目录 |
+| `overwrite` | boolean | `false` | 是否允许替换已存在的导出文件 |
 | `sParameters` | boolean | `false` | 自动发现端口并导出 `Sij`、幅值、dB |
 | `tableExpressions` | string[] | — | 全局表达式表 |
 | `fieldImages` | array | — | `{expr, filename?, title?}` → PNG |
@@ -382,6 +388,8 @@ comsolbatch -inputfile ... -outputfile ... -batchlog ... -study std1 -stoptime .
 | `integrals` | array | — | `{exprs, evalKind, selection?, dataset?, filename?}` → CSV |
 
 所有导出项都独立记录成功/失败；不会假设模型一定有端口或某个变量。返回 `items` 与 `fileChecks`（路径、存在、大小、行数）。只要有一项失败，任务状态为 `failed`，但其他已成功生成的文件仍会保留在返回结果中，不会被丢弃。
+
+`filename` 只能是纯文件名，禁止 `../`、`/`、`\` 等路径成分；目标文件已存在且 `overwrite=false` 时会返回 `OUTPUT_EXISTS`，不会静默覆盖。
 
 示例：
 
@@ -516,7 +524,7 @@ node --test test/integration.test.mjs
 
 真实执行：环境检查 → 创建同轴空气段模型并求解 → 加载校验 → 评估 S11 → 修改频率并回读 → 运行求解 → 导出 S 参数/CSV/PNG/截线 → 2 组扫描 → 读日志。
 
-结果：**1/1 通过**（约 161 s）。
+结果：**1/1 通过**（约 154 s）。
 
 ### 插件全链路自测
 
