@@ -297,9 +297,12 @@ public class ComsolBridge {
     } else if ("rf_coax_air".equals(template)) {
       m = createRfCoaxAir(job);
       RESULT.put("template", "rf_coax_air");
+    } else if ("rectangular_slot_launcher".equals(template)) {
+      m = createRectangularSlotLauncher(job);
+      RESULT.put("template", "rectangular_slot_launcher");
     } else {
       throw new BridgeException("UNKNOWN_TEMPLATE", "Unknown template: " + template
-          + "; supported: coaxial_conical_gap, rf_coax_air");
+          + "; supported: coaxial_conical_gap, rf_coax_air, rectangular_slot_launcher");
     }
 
     boolean solve = job.path("solve").asBoolean(false);
@@ -320,6 +323,59 @@ public class ComsolBridge {
         s.put("db", 20.0 * Math.log10(Math.max(Math.hypot(c[0][0][0], c[1][0][0]), 1e-30)));
       } catch (Throwable t) {
         RESULT.put("s11Error", safe(t.getMessage()));
+      }
+      if ("rectangular_slot_launcher".equals(template)) {
+        try {
+          NumericalFeature s21 = m.result().numerical().create("s21_check", "Global");
+          s21.set("expr", new String[]{"ewfd.S21"});
+          double[][][] c21 = s21.getComplex();
+          ObjectNode s = RESULT.putObject("s21");
+          s.put("real", c21[0][0][0]);
+          s.put("imag", c21[1][0][0]);
+          s.put("magnitude", Math.hypot(c21[0][0][0], c21[1][0][0]));
+          s.put("db", 20.0 * Math.log10(Math.max(Math.hypot(c21[0][0][0], c21[1][0][0]), 1e-30)));
+        } catch (Throwable t) {
+          RESULT.put("s21Error", safe(t.getMessage()));
+        }
+        try {
+          double bb = evalParam(m, "b");
+          double tm = evalParam(m, "t_m");
+          double tq = evalParam(m, "t_q");
+          double slotL = evalParam(m, "slot_l");
+          double L = evalParam(m, "L");
+          double z0 = (L - slotL) / 2.0;
+          double yProbe = bb / 2 + tm + tq + 2.0;
+          double[][] coords = new double[3][51];
+          for (int i = 0; i < 51; i++) {
+            coords[0][i] = evalParam(m, "slot_offset");
+            coords[1][i] = yProbe;
+            coords[2][i] = z0 + slotL * i / 50.0;
+          }
+          NumericalFeature ip = m.result().numerical().create(tag("slotline"), "Interp");
+          ip.set("expr", new String[]{"ewfd.normE"});
+          ip.set("coorderr", "off");
+          ip.set("coord", coords);
+          double[][][] data = ip.getData();
+          if (data.length > 0 && data[0].length > 0) {
+            double[] vals = data[0][0];
+            double min = 1e300, max = -1e300, sum = 0;
+            for (int i = 0; i < vals.length; i++) {
+              min = Math.min(min, vals[i]);
+              max = Math.max(max, vals[i]);
+              sum += vals[i];
+            }
+            ObjectNode sf = RESULT.putObject("slotField");
+            sf.put("expression", "ewfd.normE");
+            sf.put("points", vals.length);
+            sf.put("probeY", yProbe);
+            sf.put("min", min);
+            sf.put("max", max);
+            sf.put("mean", sum / vals.length);
+            sf.put("uniformity", (max + min) != 0 ? 1.0 - (max - min) / (max + min) : 0.0);
+          }
+        } catch (Throwable t) {
+          RESULT.put("slotFieldError", safe(t.getMessage()));
+        }
       }
     } else {
       RESULT.put("solved", false);
@@ -437,6 +493,276 @@ public class ComsolBridge {
     RESULT.put("outletEdge", top);
     RESULT.set("modelingAssumptions", assumptionsCoaxGap());
     return m;
+  }
+
+  static Model createRectangularSlotLauncher(JsonNode job) throws Exception {
+    JsonNode p = job.path("templateParams");
+    Model m = ModelUtil.create(ModelUtil.uniquetag("SlotLauncher"));
+    m.modelNode().create("comp1");
+    setSlotParams(m, p);
+    double a = evalParam(m, "a");
+    double b = evalParam(m, "b");
+    double L = evalParam(m, "L");
+    double tm = evalParam(m, "t_m");
+    double tq = evalParam(m, "t_q");
+    double quartzW = evalParam(m, "quartz_w");
+    double outH = evalParam(m, "outer_h");
+    double outX = evalParam(m, "outer_x");
+    double margin = evalParam(m, "margin");
+
+    GeomSequence g = m.geom().create("geom1", 3);
+    g.lengthUnit("mm");
+    g.label("Rectangular waveguide slot launcher");
+
+    GeomFeature wg = g.feature().create("wg", "Block");
+    wg.label("WR-340 waveguide air");
+    wg.set("size", new String[]{"a", "b", "L"});
+    wg.set("pos", new String[]{"-a/2", "-b/2", "0"});
+
+    String waveguideTag = "wg";
+    if (evalParam(m, "ridge_h") > 0) {
+      GeomFeature ridge = g.feature().create("ridge", "Block");
+      ridge.label("Ridge under slot");
+      ridge.set("size", new String[]{"ridge_w", "ridge_h", "ridge_l"});
+      ridge.set("pos", new String[]{"slot_offset-ridge_w/2", "-b/2", "(L-ridge_l)/2"});
+      GeomFeature cut = g.feature().create("wgcut", "Difference");
+      cut.selection("input").set("wg");
+      cut.selection("input2").set("ridge");
+      waveguideTag = "wgcut";
+    }
+
+    GeomFeature slot = g.feature().create("slot", "Block");
+    slot.label("Slot air volume");
+    slot.set("size", new String[]{"slot_w", "t_m", "slot_l"});
+    slot.set("pos", new String[]{"slot_offset-slot_w/2", "b/2", "(L-slot_l)/2"});
+
+    GeomFeature quartz = g.feature().create("quartz", "Block");
+    quartz.label("Fused silica window");
+    quartz.set("size", new String[]{"quartz_w", "t_q", "quartz_l"});
+    quartz.set("pos", new String[]{"slot_offset-quartz_w/2", "b/2+t_m", "(L-quartz_l)/2"});
+
+    GeomFeature qtool = g.feature().create("qtool", "Block");
+    qtool.set("size", new String[]{"quartz_w", "t_q", "quartz_l"});
+    qtool.set("pos", new String[]{"slot_offset-quartz_w/2", "b/2+t_m", "(L-quartz_l)/2"});
+
+    GeomFeature outer = g.feature().create("outer", "Block");
+    outer.label("Open air above slot");
+    outer.set("size", new String[]{"outer_x", "outer_h", "L+2*margin"});
+    outer.set("pos", new String[]{"-outer_x/2", "b/2+t_m", "-margin"});
+
+    GeomFeature dif = g.feature().create("dif1", "Difference");
+    dif.selection("input").set("outer");
+    dif.selection("input2").set("qtool");
+
+    GeomFeature uni = g.feature().create("uni1", "Union");
+    uni.selection("input").set(waveguideTag, "slot", "dif1", "quartz");
+    g.run();
+
+    int ndom = g.getNDomains();
+    double[][] boxes = domainBoxes(g);
+    int[] airIds = new int[boxes.length];
+    int nAir = 0;
+    int quartzId = -1;
+    for (int i = 0; i < boxes.length; i++) {
+      double[] bx = boxes[i];
+      boolean isQuartz = Math.abs(bx[2] - (b / 2 + tm)) < 1e-3
+          && Math.abs(bx[3] - (b / 2 + tm + tq)) < 1e-3
+          && (bx[1] - bx[0]) < quartzW + 1e-3;
+      if (isQuartz) {
+        quartzId = i + 1;
+      } else {
+        airIds[nAir++] = i + 1;
+      }
+    }
+    if (quartzId < 0) {
+      throw new BridgeException("QUARTZ_DOMAIN_NOT_FOUND", "Could not identify the quartz window domain");
+    }
+
+    Material air = m.material().create("mat1", "Common");
+    air.label("Air");
+    air.selection().set(Arrays.copyOf(airIds, nAir));
+    air.propertyGroup("def").set("relpermittivity", "1");
+    air.propertyGroup("def").set("relpermeability", "1");
+    air.propertyGroup("def").set("electricconductivity", "0");
+
+    Material q = m.material().create("mat2", "Common");
+    q.label("Fused silica (assumed)");
+    q.selection().set(new int[]{quartzId});
+    q.propertyGroup("def").set("relpermittivity", m.param().get("quartz_er"));
+    q.propertyGroup("def").set("relpermeability", "1");
+    q.propertyGroup("def").set("electricconductivity", "0");
+
+    int p1f = bigFaceAt(g, 2, 0, 1e-6);
+    int p2f = bigFaceAt(g, 2, L, 1e-6);
+    if (p1f < 0 || p2f < 0) {
+      throw new BridgeException("PORT_FACE_NOT_FOUND", "Could not locate waveguide port faces");
+    }
+    Physics emw = m.physics().create("emw", "ElectromagneticWavesFrequencyDomain", "geom1");
+    emw.label("Electromagnetic Waves, Frequency Domain");
+    PhysicsFeature p1 = emw.create("port1", "Port", 2);
+    p1.label("WR-340 TE10 input");
+    p1.set("PortType", "Rectangular");
+    p1.set("PortName", "1");
+    p1.set("PortModeType", "TE");
+    p1.set("PortModeNumber", "10");
+    p1.set("Pin", "P_in");
+    p1.selection().set(new int[]{p1f});
+    PhysicsFeature p2 = emw.create("port2", "Port", 2);
+    p2.label("WR-340 TE10 output");
+    p2.set("PortType", "Rectangular");
+    p2.set("PortName", "2");
+    p2.set("PortModeType", "TE");
+    p2.set("PortModeNumber", "10");
+    p2.set("PortExcitation", "off");
+    p2.selection().set(new int[]{p2f});
+
+    LinkedHashSet<Integer> scatSet = new LinkedHashSet<Integer>();
+    addAll(scatSet, facesAtPlane(g, 1, b / 2 + tm + outH, 1e-6));
+    addAll(scatSet, facesAtPlane(g, 0, -outX / 2, 1e-6));
+    addAll(scatSet, facesAtPlane(g, 0, outX / 2, 1e-6));
+    addAll(scatSet, facesAtPlane(g, 2, -margin, 1e-6));
+    addAll(scatSet, facesAtPlane(g, 2, L + margin, 1e-6));
+    int[] scat = new int[scatSet.size()];
+    int si = 0;
+    for (int f : scatSet) scat[si++] = f;
+    PhysicsFeature sbc = emw.create("sbc1", "Scattering", 2);
+    sbc.label("Open half-space boundary");
+    sbc.selection().set(scat);
+
+    Study std = m.study().create("std1");
+    std.label("Frequency-domain study");
+    StudyFeature freqStep = std.create("freq", "Frequency");
+    freqStep.label("Frequency sweep");
+    freqStep.set("plist", "freq");
+    buildMesh(m, 3, job.path("meshSize").asInt(5));
+
+    RESULT.put("dimension", 3);
+    RESULT.put("domains", ndom);
+    RESULT.put("quartzDomain", quartzId);
+    RESULT.put("portFaces", p1f + "," + p2f);
+    RESULT.put("scatteringFaces", scat.length);
+    RESULT.put("ridgeHeight", evalParam(m, "ridge_h"));
+    RESULT.put("slotOffset", evalParam(m, "slot_offset"));
+    RESULT.set("modelingAssumptions", assumptionsSlotLauncher(m));
+    return m;
+  }
+
+  static void setSlotParams(Model m, JsonNode p) throws Exception {
+    setParamDefault(m, p, "a", "86.36");
+    setParamDefault(m, p, "b", "43.18");
+    setParamDefault(m, p, "L", "200");
+    setParamDefault(m, p, "slot_l", "150");
+    setParamDefault(m, p, "slot_w", "4");
+    setParamDefault(m, p, "slot_offset", "20");
+    setParamDefault(m, p, "t_m", "2");
+    setParamDefault(m, p, "t_q", "4");
+    setParamDefault(m, p, "quartz_w", "10");
+    setParamDefault(m, p, "quartz_l", "160");
+    setParamDefault(m, p, "quartz_er", "3.8");
+    setParamDefault(m, p, "outer_h", "100");
+    setParamDefault(m, p, "outer_x", "120");
+    setParamDefault(m, p, "margin", "20");
+    setParamDefault(m, p, "ridge_h", "30");
+    setParamDefault(m, p, "ridge_w", "30");
+    setParamDefault(m, p, "ridge_l", "170");
+    setParamDefault(m, p, "freq", "2.45[GHz]");
+    setParamDefault(m, p, "P_in", "1[W]");
+    String[] names = {"a", "b", "L", "slot_l", "slot_w", "slot_offset", "t_m", "t_q", "quartz_w",
+        "quartz_l", "quartz_er", "outer_h", "outer_x", "margin", "ridge_h", "ridge_w",
+        "ridge_l", "freq", "P_in"};
+    for (int i = 0; i < names.length; i++) {
+      m.param().evaluate(m.param().get(names[i]));
+    }
+    double Lv = evalParam(m, "L");
+    double slotL = evalParam(m, "slot_l");
+    double slotW = evalParam(m, "slot_w");
+    double quartzW = evalParam(m, "quartz_w");
+    double quartzL = evalParam(m, "quartz_l");
+    double offset = evalParam(m, "slot_offset");
+    double ridgeH = evalParam(m, "ridge_h");
+    double ridgeL = evalParam(m, "ridge_l");
+    double bv = evalParam(m, "b");
+    if (slotL > Lv) throw new BridgeException("INVALID_SLOT", "slot_l must not exceed L");
+    if (quartzL < slotL) throw new BridgeException("INVALID_QUARTZ", "quartz_l must be >= slot_l");
+    if (quartzW < slotW) throw new BridgeException("INVALID_QUARTZ", "quartz_w must be >= slot_w");
+    if (Math.abs(offset) + quartzW / 2 > evalParam(m, "a") / 2 + 1e-9) {
+      throw new BridgeException("INVALID_SLOT_OFFSET", "slot_offset + quartz_w/2 exceeds the broad wall");
+    }
+    if (ridgeH >= bv) throw new BridgeException("INVALID_RIDGE", "ridge_h must be smaller than b");
+    if (ridgeH > 0 && ridgeL > Lv) throw new BridgeException("INVALID_RIDGE", "ridge_l must not exceed L");
+  }
+
+  static double[][] domainBoxes(GeomSequence g) {
+    double[][] v = g.getVertexCoord();
+    int[][] adj = g.getAdj(3, 0);
+    double[][] boxes = new double[adj.length - 1][];
+    for (int i = 1; i < adj.length; i++) {
+      double xmin = 1e9, xmax = -1e9, ymin = 1e9, ymax = -1e9, zmin = 1e9, zmax = -1e9;
+      for (int k = 0; k < adj[i].length; k++) {
+        int idx = adj[i][k] - 1;
+        if (idx < 0) continue;
+        xmin = Math.min(xmin, v[0][idx]);
+        xmax = Math.max(xmax, v[0][idx]);
+        ymin = Math.min(ymin, v[1][idx]);
+        ymax = Math.max(ymax, v[1][idx]);
+        zmin = Math.min(zmin, v[2][idx]);
+        zmax = Math.max(zmax, v[2][idx]);
+      }
+      boxes[i - 1] = new double[]{xmin, xmax, ymin, ymax, zmin, zmax};
+    }
+    return boxes;
+  }
+
+  static int[] facesAtPlane(GeomSequence g, int axis, double value, double tol) {
+    double[][] v = g.getVertexCoord();
+    int[][] adj = g.getAdj(2, 0);
+    ArrayList<Integer> out = new ArrayList<Integer>();
+    for (int i = 1; i < adj.length; i++) {
+      boolean ok = true;
+      int count = 0;
+      for (int k = 0; k < adj[i].length; k++) {
+        int idx = adj[i][k] - 1;
+        if (idx < 0) continue;
+        count++;
+        if (Math.abs(v[axis][idx] - value) > tol) {
+          ok = false;
+          break;
+        }
+      }
+      if (ok && count >= 3) out.add(i);
+    }
+    int[] a = new int[out.size()];
+    for (int i = 0; i < a.length; i++) a[i] = out.get(i);
+    return a;
+  }
+
+  static int bigFaceAt(GeomSequence g, int axis, double value, double tol) {
+    int[] f = facesAtPlane(g, axis, value, tol);
+    return f.length > 0 ? f[0] : -1;
+  }
+
+  static void addAll(Set<Integer> set, int[] values) {
+    for (int i = 0; i < values.length; i++) set.add(values[i]);
+  }
+
+  static ArrayNode assumptionsSlotLauncher(Model m) {
+    ArrayNode a = OM.createArrayNode();
+    a.add("3D cold electromagnetic model only; no plasma, gas flow or heat transfer is included.");
+    a.add("Fused silica window is assumed lossless with epsr=3.8; metal walls are PEC; all other domains are air.");
+    double offset = evalParam(m, "slot_offset");
+    if (Math.abs(offset) > 1e-9) {
+      a.add("The slot is offset from the broad-wall centerline to couple to the TE10 surface current.");
+    } else {
+      a.add("The slot is centred on the broad wall; this gives weak coupling to the TE10 surface current.");
+    }
+    if (evalParam(m, "ridge_h") > 0) {
+      a.add("The ridge is a metal cutout under the slot, leaving a reduced-height gap to concentrate the electric field.");
+    }
+    a.add("Both waveguide ends use rectangular TE10 ports; port 2 is not excited.");
+    a.add("A finite outer air box with scattering boundaries approximates the open half-space above the slot.");
+    a.add("The field output is a cold-EM estimate; plasma ignition, density and uniformity require gas pressure, power and plasma data.");
+    a.add("First-pass dimensions; mesh convergence and manufacturing tolerances have not been verified.");
+    return a;
   }
 
   static void setDefaultParams(Model m, JsonNode p) throws Exception {
@@ -698,48 +1024,65 @@ public class ComsolBridge {
         cols.add("S" + portNames.get(i) + portNames.get(j));
       }
     }
-    NumericalFeature nf = m.result().numerical().create(tag("sparam"), "Global");
-    nf.set("expr", exprs.toArray(new String[0]));
-    double[][][] c = nf.getComplex();
-    int rows = c[0].length;
+
+    List<String> okExprs = new ArrayList<String>();
+    List<String> okCols = new ArrayList<String>();
+    List<double[][]> okValues = new ArrayList<double[][]>();
+    ArrayNode skipped = OM.createArrayNode();
+    int rows = 0;
+    for (int e = 0; e < exprs.size(); e++) {
+      try {
+        NumericalFeature nf = m.result().numerical().create(tag("sparam"), "Global");
+        nf.set("expr", new String[]{exprs.get(e)});
+        double[][][] c = nf.getComplex();
+        int r = c[0].length;
+        double[][] vals = new double[r][2];
+        for (int s = 0; s < r; s++) {
+          vals[s][0] = c[0][s][0];
+          vals[s][1] = c[1][s][0];
+        }
+        okExprs.add(exprs.get(e));
+        okCols.add(cols.get(e));
+        okValues.add(vals);
+        rows = Math.max(rows, r);
+      } catch (Throwable t) {
+        skipped.add(exprs.get(e) + ": " + safe(t.getMessage()));
+      }
+    }
+    if (okCols.isEmpty()) {
+      throw new BridgeException("SPARAMETER_EVALUATION_FAILED",
+          "No S-parameter expression could be evaluated; the model may excite only one port");
+    }
 
     List<String> header = new ArrayList<String>();
     header.add("solution_index");
-    header.addAll(cols);
+    header.addAll(okCols);
+    for (int e = 0; e < okCols.size(); e++) {
+      header.add(okCols.get(e) + "_mag");
+      header.add(okCols.get(e) + "_dB");
+    }
     List<String[]> data = new ArrayList<String[]>();
     for (int s = 0; s < rows; s++) {
       String[] r = new String[header.size()];
       r[0] = String.valueOf(s + 1);
-      for (int e = 0; e < exprs.size(); e++) {
-        double re = s < c[0].length && e < c[0][s].length ? c[0][s][e] : Double.NaN;
-        double im = s < c[1].length && e < c[1][s].length ? c[1][s][e] : Double.NaN;
+      for (int e = 0; e < okValues.size(); e++) {
+        double[][] vals = okValues.get(e);
+        double re = s < vals.length ? vals[s][0] : Double.NaN;
+        double im = s < vals.length ? vals[s][1] : Double.NaN;
         r[e + 1] = formatDouble(re) + "+" + formatDouble(im) + "j";
+        double mag = Math.hypot(re, im);
+        r[1 + okCols.size() + 2 * e] = formatDouble(mag);
+        r[2 + okCols.size() + 2 * e] = formatDouble(20.0 * Math.log10(Math.max(mag, 1e-30)));
       }
       data.add(r);
-    }
-    // Magnitude and dB columns.
-    for (int e = 0; e < exprs.size(); e++) {
-      header.add(cols.get(e) + "_mag");
-      header.add(cols.get(e) + "_dB");
-    }
-    for (int s = 0; s < rows; s++) {
-      String[] r = data.get(s);
-      String[] extended = Arrays.copyOf(r, header.size());
-      for (int e = 0; e < exprs.size(); e++) {
-        double re = s < c[0].length && e < c[0][s].length ? c[0][s][e] : Double.NaN;
-        double im = s < c[1].length && e < c[1][s].length ? c[1][s][e] : Double.NaN;
-        double mag = Math.hypot(re, im);
-        extended[exprs.size() + 1 + 2 * e] = formatDouble(mag);
-        extended[exprs.size() + 2 + 2 * e] = formatDouble(20.0 * Math.log10(Math.max(mag, 1e-30)));
-      }
-      data.set(s, extended);
     }
     writeCsv(out, header, data);
     row.put("path", out.getAbsolutePath());
     row.put("rows", rows);
     row.set("columns", OM.valueToTree(header));
     row.put("ports", OM.valueToTree(portNames));
-    row.put("expressions", OM.valueToTree(exprs));
+    row.put("expressions", OM.valueToTree(okExprs));
+    if (skipped.size() > 0) row.set("skippedExpressions", skipped);
   }
 
   static void exportTable(Model m, JsonNode item, ObjectNode row) throws Exception {

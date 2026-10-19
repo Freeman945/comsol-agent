@@ -12,6 +12,7 @@ COMSOL Multiphysics 自动化插件，运行在 DeepSeek Harness 的主机进程
 
 - 环境检测与真实许可检出
 - 2D 轴对称同轴圆锥模型建模、网格和频域求解
+- 3D 矩形波导开槽模型、TE10 端口和槽口场评估
 - S11、场量积分、最大值/平均值、截线插值
 - 4 组参数扫描
 - CSV、PNG 导出
@@ -116,7 +117,7 @@ plugin_manager(action="set_plugin", target="include:comsol-agent", enabled=true)
 |---|---|
 | `comsol_check_environment` | 检测安装、版本、Java、许可线索、MATLAB/LiveLink |
 | `comsol_validate_model` | 文件检查 + COMSOL 实际加载 |
-| `comsol_create_model` | 从零创建同轴圆锥或同轴空气段模型 |
+| `comsol_create_model` | 创建 2D 同轴或 3D 矩形波导开槽模型 |
 | `comsol_set_parameters` | 改全局参数，保存并回读核对 |
 | `comsol_run_model` | 运行已有模型，支持 Java API 和 comsolbatch |
 | `comsol_parameter_sweep` | 多参数笛卡尔积扫描，支持取消和续跑 |
@@ -187,6 +188,12 @@ comsol_export_results(
 
 `rf_coax_air` 是同样的设置，几何换成一段均匀同轴空气段，适合做最小连通性测试。
 
+`rectangular_slot_launcher` 是 3D 冷态电磁模板：WR-340 矩形波导、顶壁纵向开槽、石英窗和外部空气盒。默认波导 200 mm 长，槽 150 × 12 mm，槽中心距宽壁中线 20 mm，石英窗 4 mm 厚、`epsr=3.8`。两端是矩形 TE10 端口，外部空气盒用散射边界近似开放半空间；槽下可加金属脊 `ridge_h` 来压缩高度、增强电场。
+
+主要参数：`a`、`b`、`L`、`slot_l`、`slot_w`、`slot_offset`、`t_m`、`t_q`、`quartz_w`、`quartz_l`、`quartz_er`、`outer_h`、`outer_x`、`margin`、`ridge_h`、`ridge_w`、`ridge_l`。槽必须偏离宽壁中心线，居中纵槽与 TE10 表面电流耦合很弱；这一点在冷态仿真里会直接表现为 S21 接近 0 dB、槽口场很弱。
+
+一条 150 mm 线状等离子体源的设计推导、首轮冷态结果和下一轮改法见 [宽幅微波等离子体源设计](docs/宽幅微波等离子体源设计.md)。
+
 ## 结果与单位
 
 - 模板几何长度单位是 mm。
@@ -243,7 +250,7 @@ node scripts/selftest.mjs
 ## 限制
 
 - 等离子体、气体流动、传热没有实现。缺少气体种类、压力、电子密度、碰撞频率等数据时不会自动生成这类模型。
-- `create_model` 目前只有两个 2D 轴对称模板，任意几何和 3D 端口还没有通用接口。
+- `create_model` 目前有两个 2D 轴对称模板和一个 3D 矩形波导开槽模板；任意几何和通用 3D 端口还没有接口。
 - 参数扫描采用逐组独立运行，不是 COMSOL 原生 Parametric 研究步。这样做可以保留每组日志、失败隔离和断点续跑，代价是每组都要启动一次 COMSOL。
 - S 参数 CSV 目前用 `solution_index` 标识解，多频点研究还没有自动频率列。
 - MATLAB/LiveLink 只做了存在性检测，没有验证许可或调用。

@@ -12,6 +12,7 @@ Tested on Windows 10 x64 with COMSOL 6.2.0.290 and the Java 11 runtime bundled w
 
 - environment detection and a real license checkout
 - 2D axisymmetric coaxial-conical model creation, meshing and frequency-domain solve
+- 3D rectangular-waveguide slot model with TE10 ports and slot-field evaluation
 - S11, field integrals, max/average and line interpolation
 - a 4-case parameter sweep
 - CSV and PNG export
@@ -116,7 +117,7 @@ Auto-detection checks `COMSOL_HOME`, drive roots and `COMSOL*` directories under
 |---|---|
 | `comsol_check_environment` | COMSOL install, version, Java, license hints, MATLAB/LiveLink |
 | `comsol_validate_model` | File checks plus an actual COMSOL load |
-| `comsol_create_model` | Create a coaxial-conical or coaxial-air model |
+| `comsol_create_model` | Create a 2D coaxial or 3D rectangular-slot model |
 | `comsol_set_parameters` | Edit global parameters, save and verify by reloading |
 | `comsol_run_model` | Run an existing model with the Java API or comsolbatch |
 | `comsol_parameter_sweep` | Cartesian sweep with cancellation and resume |
@@ -187,6 +188,12 @@ Only the air region is modelled. Metal walls are PEC boundaries, not solid domai
 
 `rf_coax_air` uses the same setup with a uniform coaxial air section, which is useful for a minimal connectivity test.
 
+`rectangular_slot_launcher` is a 3D cold-EM template: a WR-340 waveguide, a longitudinal slot in the broad wall, a fused-silica window and an outer air box. The default waveguide is 200 mm long, the slot is 150 × 12 mm, the slot centre is 20 mm from the broad-wall centreline, and the window is 4 mm thick with `epsr=3.8`. Both ends are rectangular TE10 ports; the outer box uses scattering boundaries to approximate open half-space. An optional metal ridge (`ridge_h`) under the slot reduces the gap and concentrates the field.
+
+Main parameters: `a`, `b`, `L`, `slot_l`, `slot_w`, `slot_offset`, `t_m`, `t_q`, `quartz_w`, `quartz_l`, `quartz_er`, `outer_h`, `outer_x`, `margin`, `ridge_h`, `ridge_w`, `ridge_l`. The slot must be offset from the broad-wall centreline; a centred longitudinal slot couples very weakly to the TE10 surface current, which shows up as S21 near 0 dB and a weak slot field.
+
+A 150 mm line-source design study and first cold-EM results are in [宽幅微波等离子体源设计](docs/宽幅微波等离子体源设计.md) (Chinese).
+
 ## Results and units
 
 - Template geometry uses millimetres.
@@ -243,7 +250,7 @@ Logs are in `test-logs/`. Full results and failure-path tests are in [TEST_REPOR
 ## Limitations
 
 - Plasma, gas flow and heat transfer are not implemented. The plugin will not generate such models without gas species, pressure, electron density, collision frequency and similar data.
-- `create_model` currently has two 2D axisymmetric templates. Arbitrary geometry and 3D port setups do not have a generic interface yet.
+- `create_model` has two 2D axisymmetric templates and one 3D rectangular-slot template. Arbitrary geometry and generic 3D port setups do not have an interface yet.
 - Parameter sweeps run one independent COMSOL process per case instead of a native Parametric study step. This keeps per-case logs, failure isolation and resume support, at the cost of one COMSOL startup per case.
 - S-parameter CSV files use `solution_index`; multi-frequency studies do not yet get an automatic frequency column.
 - MATLAB/LiveLink are checked for installed files only. Their licenses and APIs are not verified or called.
