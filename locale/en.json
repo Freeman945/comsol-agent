@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "COMSOL Simulation Assistant",
+    "description": "Detect local COMSOL, run and edit models, sweep parameters, export results and evaluate numerical quantities through the official COMSOL Java API."
+  }
+}

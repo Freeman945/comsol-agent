@@ -1,0 +1,103 @@
+[@local/comsol-agent] loaded @local/comsol-agent@1.0.0; workspace=D:\comsol-agent\selftest-workspace; comsolHome=D:\COMSOL62\Multiphysics
+workspace=D:/comsol-agent/selftest-workspace
+comsolHome=D:/COMSOL62/Multiphysics
+tools=comsol_check_environment, comsol_validate_model, comsol_create_model, comsol_set_parameters, comsol_run_model, comsol_parameter_sweep, comsol_get_job_status, comsol_read_log, comsol_export_results, comsol_evaluate_results, comsol_cancel_job
+[PASS] comsol_check_environment (6391 ms)
+[PASS] comsol_check_environment(deep) (22786 ms)
+[PASS] comsol_create_model(rf_coax_air, solve) (21013 ms)
+[PASS] comsol_validate_model (15889 ms)
+[PASS] comsol_evaluate_results(global+integral+line) (16144 ms)
+[PASS] comsol_evaluate_results(volume integral) (16056 ms)
+[PASS] comsol_evaluate_results(line) (16076 ms)
+[PASS] comsol_set_parameters (17475 ms)
+[PASS] comsol_run_model(java, wait) (19039 ms)
+[PASS] comsol_export_results (17689 ms)
+[PASS] comsol_parameter_sweep(2 combos, wait) (37659 ms)
+[PASS] comsol_get_job_status (4 ms)
+[PASS] comsol_read_log (2 ms)
+
+==== SUMMARY ====
+{
+  "passed": 13,
+  "failed": 0,
+  "results": [
+    {
+      "name": "comsol_check_environment",
+      "status": "PASS",
+      "detail": "",
+      "durationMs": 6391
+    },
+    {
+      "name": "comsol_check_environment(deep)",
+      "status": "PASS",
+      "detail": "",
+      "durationMs": 22786
+    },
+    {
+      "name": "comsol_create_model(rf_coax_air, solve)",
+      "status": "PASS",
+      "detail": "",
+      "durationMs": 21013
+    },
+    {
+      "name": "comsol_validate_model",
+      "status": "PASS",
+      "detail": "",
+      "durationMs": 15889
+    },
+    {
+      "name": "comsol_evaluate_results(global+integral+line)",
+      "status": "PASS",
+      "detail": "",
+      "durationMs": 16144
+    },
+    {
+      "name": "comsol_evaluate_results(volume integral)",
+      "status": "PASS",
+      "detail": "",
+      "durationMs": 16056
+    },
+    {
+      "name": "comsol_evaluate_results(line)",
+      "status": "PASS",
+      "detail": "",
+      "durationMs": 16076
+    },
+    {
+      "name": "comsol_set_parameters",
+      "status": "PASS",
+      "detail": "",
+      "durationMs": 17475
+    },
+    {
+      "name": "comsol_run_model(java, wait)",
+      "status": "PASS",
+      "detail": "",
+      "durationMs": 19039
+    },
+    {
+      "name": "comsol_export_results",
+      "status": "PASS",
+      "detail": "",
+      "durationMs": 17689
+    },
+    {
+      "name": "comsol_parameter_sweep(2 combos, wait)",
+      "status": "PASS",
+      "detail": "",
+      "durationMs": 37659
+    },
+    {
+      "name": "comsol_get_job_status",
+      "status": "PASS",
+      "detail": "",
+      "durationMs": 4
+    },
+    {
+      "name": "comsol_read_log",
+      "status": "PASS",
+      "detail": "",
+      "durationMs": 2
+    }
+  ]
+}

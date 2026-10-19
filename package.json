@@ -1,0 +1,37 @@
+{
+  "name": "@local/comsol-agent",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "COMSOL Multiphysics automation tools for DeepSeek Harness (COMSOL 自动仿真助手)",
+  "exports": {
+    ".": "./index.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "lib",
+    "java",
+    "locale",
+    "icon.svg",
+    "cordis.patch.yml",
+    "README.md",
+    "TEST_REPORT.md",
+    "docs",
+    "examples",
+    "test",
+    "test-logs",
+    "scripts"
+  ],
+  "scripts": {
+    "test": "node --test test/unit.test.mjs",
+    "test:integration": "node --test test/integration.test.mjs",
+    "selftest": "node scripts/selftest.mjs"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

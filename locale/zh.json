@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "COMSOL 自动仿真助手",
+    "description": "在本机检测 COMSOL、运行与修改模型、参数扫描、结果导出与数值评估。所有求解均通过 COMSOL 官方 Java API 执行。"
+  }
+}

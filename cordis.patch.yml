@@ -1,0 +1,4 @@
+- insert:
+    - id: comsol-agent
+      name: '@local/comsol-agent'
+      config: {}
